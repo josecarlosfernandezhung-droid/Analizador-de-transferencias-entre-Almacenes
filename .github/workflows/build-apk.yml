@@ -1,0 +1,60 @@
+name: Compilar APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Agregar la plataforma Android
+        run: npx cap add android
+
+      - name: Generar iconos y splash desde resources/
+        run: npx capacitor-assets generate --android
+
+      - name: Sincronizar con Android
+        run: npx cap sync android
+
+      # Le agrega permisos de almacenamiento al AndroidManifest, para que la
+      # app pueda leer los .xlsx que el usuario elige y guardar el CSV/Excel
+      # que exporta, igual que se hizo en las otras apps (Arqueo Stock, etc.)
+      - name: Agregar permisos de almacenamiento
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i 's#<manifest #<manifest xmlns:tools="http://schemas.android.com/tools" #' "$MANIFEST"
+          sed -i '/<application/i\    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />' "$MANIFEST"
+          sed -i 's#<application #<application android:requestLegacyExternalStorage="true" tools:targetApi="29" #' "$MANIFEST"
+          cat "$MANIFEST"
+
+      - name: Dar permisos de ejecución a gradlew
+        run: chmod +x android/gradlew
+
+      - name: Compilar APK (debug, sin firmar)
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Subir el APK como resultado
+        uses: actions/upload-artifact@v4
+        with:
+          name: analizador-transferencias-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

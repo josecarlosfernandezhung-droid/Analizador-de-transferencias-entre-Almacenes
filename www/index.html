@@ -939,6 +939,14 @@ function saveColumnPrefs(prefs){
 function escapeHtml(s){
   return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
+// Escapa un valor para insertarlo dentro de un string JS de un manejador de eventos en línea
+// (ej: onclick="fn('...')") que a su vez está dentro de un atributo HTML con comillas dobles.
+// Sin esto, un nombre de producto con comillas (ej: tubo 1/2") o apóstrofe rompe el botón
+// de ese producto y su cantidad nunca se guarda.
+function escapeForJsAttr(s){
+  const jsEscaped = String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  return escapeHtml(jsEscaped);
+}
 
 function checkReadyToProcess(){
   const ready = !!state.rawPiso && !!state.rawAlmacen;
@@ -956,7 +964,7 @@ function procesarYComparar(){
     const umbralVal = umbralEl ? parseInt(umbralEl.value,10) : NaN;
     state.pisoThreshold = isNaN(umbralVal) ? null : umbralVal;
     const startPiso = hdrPiso?1:0;
-    const piso = [];
+    const pisoMap = {};
     state.rawPiso.slice(startPiso).forEach(r=>{
       const nombre = String(r[colNombrePiso]||'').trim();
       if(!nombre) return;
@@ -965,8 +973,16 @@ function procesarYComparar(){
         const parsed = parseFloat(String(r[colCantidadPiso]||'0').replace(',','.'));
         cantidad = isNaN(parsed) ? 0 : parsed;
       }
-      piso.push({nombre, norm: normaliza(nombre), cantidad});
+      const norm = normaliza(nombre);
+      if(pisoMap[norm]){
+        if(cantidad!==null){
+          pisoMap[norm].cantidad = (pisoMap[norm].cantidad||0) + cantidad; // suma duplicados
+        }
+      } else {
+        pisoMap[norm] = {nombre, norm, cantidad};
+      }
     });
+    const piso = Object.values(pisoMap);
 
     // Almacén
     const hdrAlm = document.getElementById('hdr_almacen').checked;
@@ -1008,6 +1024,10 @@ function enableTab(id){ document.getElementById(id).disabled = false; }
 
 /* ===================== TABS ===================== */
 function showTab(name){
+  const activo = document.activeElement;
+  if(activo && activo.tagName==='INPUT' && activo.id && activo.id.startsWith('qty_')){
+    activo.blur();
+  }
   ['carga','comparar','resumen'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
   });
@@ -1105,7 +1125,7 @@ function renderPanels(){
       if(pisoProd && pisoProd.cantidad!==null && th!==null){
         const sugerido = Math.max(0, Math.min(a.cantidad, th - pisoProd.cantidad));
         if(sugerido>0){
-          sugerirBtn = `<button class="btn secondary" style="padding:3px 8px;font-size:10.5px;margin-top:4px;" onclick="setTransfer('${a.norm}', ${sugerido})">Sugerir ${sugerido}</button>`;
+          sugerirBtn = `<button class="btn secondary" style="padding:3px 8px;font-size:10.5px;margin-top:4px;" onclick="setTransfer('${escapeForJsAttr(a.norm)}', ${sugerido})">Sugerir ${sugerido}</button>`;
         }
       }
       return `
@@ -1116,10 +1136,15 @@ function renderPanels(){
           ${sugerirBtn}
         </div>
         <div class="qty-controls">
-          <button onclick="ajustarTransfer('${a.norm}',-1)">−</button>
-          <input type="number" min="0" max="${a.cantidad}" value="${transf}" id="qty_${a.norm}"
-            onchange="setTransfer('${a.norm}', this.value)">
-          <button onclick="ajustarTransfer('${a.norm}',1)">+</button>
+          <button onclick="ajustarTransfer('${escapeForJsAttr(a.norm)}',-1)">−</button>
+          <input type="number" min="0" max="${a.cantidad}" value="${transf}" id="qty_${escapeHtml(a.norm)}"
+            inputmode="numeric"
+            onfocus="this.select()"
+            oninput="syncTransferInput('${escapeForJsAttr(a.norm)}', this.value)"
+            onchange="setTransfer('${escapeForJsAttr(a.norm)}', this.value)"
+            onblur="setTransfer('${escapeForJsAttr(a.norm)}', this.value)"
+            onkeydown="if(event.key==='Enter'){ this.blur(); }">
+          <button onclick="ajustarTransfer('${escapeForJsAttr(a.norm)}',1)">+</button>
         </div>
       </div>`;
     }).join('');
@@ -1253,6 +1278,23 @@ function setTransfer(norm, value){
   if(nuevo>prod.cantidad) nuevo=prod.cantidad;
   aplicarTransfer(prod, nuevo);
 }
+// Guarda el valor en el carrito mientras el usuario escribe (sin reconstruir la lista,
+// para no perder el foco del campo). Así, aunque cambie de pestaña sin que el input
+// pierda el foco de forma "normal", lo escrito ya quedó guardado en state.cart.
+function syncTransferInput(norm, value){
+  const prod = state.almacen.find(a=>a.norm===norm);
+  if(!prod) return;
+  let nuevo = parseInt(value,10);
+  if(isNaN(nuevo) || nuevo<0) nuevo=0;
+  if(nuevo>prod.cantidad) nuevo=prod.cantidad;
+  if(nuevo<=0){
+    delete state.cart[prod.norm];
+  } else {
+    state.cart[prod.norm] = {nombre: prod.nombre, cantidad: nuevo};
+  }
+  saveSession();
+  actualizarCartBar();
+}
 function aplicarTransfer(prod, cantidad){
   if(cantidad<=0){
     delete state.cart[prod.norm];
@@ -1308,7 +1350,7 @@ function renderResumen(){
         return `<tr>
           <td>${escapeHtml(i.nombre)}</td>
           <td><b>${i.cantidad}</b></td>
-          <td class="no-print"><button class="btn ghost" onclick="quitarDeCarrito('${key}')">Quitar</button></td>
+          <td class="no-print"><button class="btn ghost" onclick="quitarDeCarrito('${escapeForJsAttr(key)}')">Quitar</button></td>
         </tr>`;
       }).join('')}
       </tbody>
@@ -1320,6 +1362,7 @@ function renderResumen(){
     </div>
 
     <div class="actions-row">
+      <button class="btn secondary" onclick="compartirWhatsAppResumen()">📱 WhatsApp</button>
       <button class="btn secondary" onclick="exportarCSV()">⬇ Exportar CSV</button>
       <button class="btn secondary" onclick="window.print()">🖨 Imprimir</button>
       <button class="btn" onclick="guardarEnHistorial()">✅ Finalizar y guardar en historial</button>
@@ -1364,6 +1407,46 @@ function exportarCSV(items){
   URL.revokeObjectURL(url);
 }
 
+/* ===================== COMPARTIR POR WHATSAPP ===================== */
+function construirTextoTraslado(items, negocio, fechaTexto){
+  const totalUnidades = items.reduce((s,i)=>s+i.cantidad,0);
+  let texto = `📦 Traslado Almacén → Piso de Venta\n`;
+  if(negocio) texto += `${negocio}\n`;
+  texto += `${fechaTexto}\n\n`;
+  items.forEach(i=>{ texto += `• ${i.nombre}: ${i.cantidad}\n`; });
+  texto += `\nTotal: ${items.length} productos, ${totalUnidades} unidades`;
+  return texto;
+}
+async function compartirWhatsApp(items, negocio, fechaTexto){
+  if(!items.length){ alert('No hay productos para compartir.'); return; }
+  const texto = construirTextoTraslado(items, negocio, fechaTexto);
+  if(navigator.share){
+    try{
+      await navigator.share({text: texto, title: 'Traslado Almacén → Piso de Venta'});
+      return;
+    }catch(e){
+      if(e && e.name==='AbortError') return; // el usuario cerró el share sheet, no hacer nada más
+      // si falla el share nativo, seguimos con el respaldo de wa.me abajo
+    }
+  }
+  const url = 'https://wa.me/?text=' + encodeURIComponent(texto);
+  window.open(url, '_blank');
+}
+function compartirWhatsAppResumen(){
+  const items = Object.values(state.cart).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const ahora = new Date();
+  const fechaTexto = ahora.toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · ' + ahora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  compartirWhatsApp(items, state.negocio, fechaTexto);
+}
+function compartirWhatsAppHistorial(idx){
+  const historial = loadHistorial();
+  const entry = historial[idx];
+  if(!entry) return;
+  const f = new Date(entry.fecha);
+  const fechaTexto = f.toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · ' + f.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  compartirWhatsApp(entry.items, entry.negocio, fechaTexto);
+}
+
 /* ===================== HISTORIAL DE TRANSFERENCIAS ===================== */
 const HISTORIAL_KEY = 'transferenciaHistorial_v1';
 function loadHistorial(){
@@ -1389,6 +1472,35 @@ function guardarEnHistorial(){
   state.cart = {};
   saveSession();
   renderResumen();
+}
+function repetirHistorial(idx){
+  const historial = loadHistorial();
+  const entry = historial[idx];
+  if(!entry) return;
+  if(!state.almacen || !state.almacen.length){
+    alert('Primero carga y procesa los archivos de Almacén y Piso de Venta en la pestaña "Carga".');
+    return;
+  }
+  if(Object.keys(state.cart).length && !confirm('Esto reemplazará los productos seleccionados actualmente por los de este traslado anterior. ¿Continuar?')) return;
+  const nuevoCart = {};
+  let omitidos = 0;
+  entry.items.forEach(i=>{
+    const norm = normaliza(i.nombre);
+    const prod = state.almacen.find(a=>a.norm===norm);
+    if(prod && prod.cantidad>0){
+      const cantidad = Math.min(i.cantidad, prod.cantidad); // no exceder la existencia actual
+      nuevoCart[prod.norm] = {nombre: prod.nombre, cantidad};
+    } else {
+      omitidos++;
+    }
+  });
+  state.cart = nuevoCart;
+  saveSession();
+  renderResumen();
+  const cargados = Object.keys(nuevoCart).length;
+  let msg = `Se cargaron ${cargados} de ${entry.items.length} productos de ese traslado.`;
+  if(omitidos>0) msg += `\n${omitidos} no están disponibles en el almacén actual (sin existencia o ya no aparecen en el archivo cargado).`;
+  alert(msg);
 }
 function eliminarHistorial(idx){
   if(!confirm('¿Eliminar esta transferencia del historial?')) return;
@@ -1416,7 +1528,9 @@ function renderHistorialBox(){
         <div class="name">${fechaTexto}</div>
         <div class="meta">${h.items.length} productos · ${h.totalUnidades} unidades${h.negocio?(' · '+escapeHtml(h.negocio)):''}</div>
       </div>
-      <div style="display:flex;gap:6px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn secondary" style="padding:6px 9px;font-size:11.5px;" onclick="repetirHistorial(${idx})">🔁 Repetir</button>
+        <button class="btn secondary" style="padding:6px 9px;font-size:11.5px;" onclick="compartirWhatsAppHistorial(${idx})">📱</button>
         <button class="btn secondary" style="padding:6px 9px;font-size:11.5px;" onclick="exportarHistorialCSV(${idx})">CSV</button>
         <button class="btn ghost" style="padding:6px 9px;font-size:11.5px;" onclick="eliminarHistorial(${idx})">Eliminar</button>
       </div>

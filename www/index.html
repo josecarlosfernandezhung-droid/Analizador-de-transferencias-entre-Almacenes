@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Transferencia Almacén → Piso de Venta</title>
+<style>
+  :root{
+    --navy:#152A3A;
+    --navy-2:#1E3A52;
+    --bg:#F2F5F7;
+    --card:#FFFFFF;
+    --teal:#0E8E86;
+    --teal-dark:#0B6E68;
+    --amber:#C9821A;
+    --amber-bg:#FCF1DD;
+    --red:#C0392B;
+    --red-bg:#FBEAE8;
+    --green-bg:#E9F6EF;
+    --green:#1E8449;
+    --ink:#1B2530;
+    --ink-soft:#5B6B78;
+    --line:#DCE3E8;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding-bottom:78px;
+  }
+  header{
+    background:linear-gradient(135deg,var(--navy),var(--navy-2));
+    color:#fff;
+    padding:16px 16px 14px;
+    position:sticky;
+    top:0;
+    z-index:20;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  header h1{
+    margin:0;
+    font-size:17px;
+    font-weight:700;
+    letter-spacing:.2px;
+  }
+  header .sub{
+    font-size:12px;
+    color:#B9C7D2;
+    margin-top:2px;
+  }
+  nav.tabs{
+    display:flex;
+    gap:6px;
+    margin-top:12px;
+  }
+  nav.tabs button{
+    flex:1;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.18);
+    color:#DCE7EE;
+    padding:9px 6px;
+    border-radius:8px;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  nav.tabs button.active{
+    background:#fff;
+    color:var(--navy);
+    border-color:#fff;
+  }
+  main{padding:12px;max-width:1100px;margin:0 auto;}
+  .hidden{display:none !important;}
+
+  /* Upload screen */
+  .upload-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+  @media(min-width:720px){
+    .upload-grid{grid-template-columns:1fr 1fr;}
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px;
+  }
+  .card h2{
+    font-size:14.5px;
+    margin:0 0 4px;
+  }
+  .card p.hint{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin:0 0 10px;
+  }
+  input[type=file]{
+    width:100%;
+    font-size:13px;
+    padding:8px;
+    border:1px dashed var(--line);
+    border-radius:8px;
+    background:#FAFCFD;
+  }
+  .status{
+    margin-top:8px;
+    font-size:12.5px;
+    font-weight:600;
+  }
+  .status.ok{color:var(--green);}
+  .status.err{color:var(--red);}
+  .config-box{
+    margin-top:10px;
+    background:#F7FAFB;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px;
+    font-size:12.5px;
+  }
+  .config-box label{
+    display:block;
+    margin:6px 0 2px;
+    font-weight:600;
+    color:var(--ink-soft);
+  }
+  select,input[type=number],input[type=text]{
+    width:100%;
+    padding:7px 8px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    font-size:13px;
+    background:#fff;
+  }
+  .preview-wrap{
+    overflow-x:auto;
+    margin-top:8px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .preview-table{
+    border-collapse:collapse;
+    font-size:11.5px;
+    min-width:100%;
+  }
+  .preview-table td,.preview-table th{
+    border:1px solid var(--line);
+    padding:5px 8px;
+    text-align:left;
+    min-width:90px;
+    max-width:180px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .preview-table th{
+    background:#EEF3F5;
+    font-weight:700;
+    color:var(--ink-soft);
+    position:sticky;
+    top:0;
+  }
+  .preview-table th.selected-name{background:var(--green-bg);color:var(--green);}
+  .preview-table th.selected-qty{background:var(--amber-bg);color:var(--amber);}
+  .preview-table td.selected-name{background:#F2FBF6;}
+  .preview-table td.selected-qty{background:#FEF8EE;}
+  .col-hint{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+  .stats-bar{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:8px;
+    margin-bottom:10px;
+  }
+  @media(min-width:720px){
+    .stats-bar{grid-template-columns:repeat(4,1fr);}
+  }
+  .stats-bar .stat-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+  }
+  .stats-bar .stat-card .n{font-size:19px;font-weight:800;color:var(--navy);}
+  .stats-bar .stat-card.warn .n{color:var(--red);}
+  .stats-bar .stat-card.ok .n{color:var(--green);}
+  .stats-bar .stat-card .l{font-size:11px;color:var(--ink-soft);margin-top:1px;}
+  .parecidos-banner{
+    background:var(--amber-bg);
+    border:1px solid #EAD4A2;
+    border-radius:8px;
+    padding:10px 12px;
+    margin-bottom:10px;
+    font-size:12.5px;
+  }
+  .parecidos-banner summary{
+    cursor:pointer;
+    font-weight:700;
+    color:#7A5310;
+  }
+  .parecidos-banner .pair{
+    padding:5px 0;
+    border-top:1px solid #EAD4A2;
+    margin-top:6px;
+    color:#5B4419;
+  }
+  .btn{
+    display:inline-block;
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    padding:10px 14px;
+    border-radius:8px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+    text-align:center;
+  }
+  .btn:active{background:var(--teal-dark);}
+  .btn.secondary{
+    background:#fff;
+    color:var(--navy);
+    border:1px solid var(--line);
+  }
+  .btn.ghost{
+    background:transparent;
+    color:var(--red);
+    border:1px solid var(--red);
+    padding:6px 10px;
+    font-size:12px;
+  }
+  .btn.block{width:100%;margin-top:10px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  .top-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+    flex-wrap:wrap;
+  }
+  .top-actions .btn{padding:8px 12px;font-size:12.5px;}
+
+  /* Split view */
+  .split{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+  @media(min-width:820px){
+    .split{grid-template-columns:1fr 1fr;}
+  }
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    max-height:74vh;
+  }
+  .panel-head{
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+    background:#FAFCFD;
+  }
+  .panel-head h3{
+    margin:0 0 6px;
+    font-size:14px;
+  }
+  .panel-head .count{
+    font-weight:400;
+    color:var(--ink-soft);
+    font-size:12px;
+  }
+  .panel-body{
+    overflow-y:auto;
+    padding:6px 10px 10px;
+  }
+  .item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:9px 4px;
+    border-bottom:1px solid #EEF2F4;
+  }
+  .item:last-child{border-bottom:none;}
+  .item .name{
+    font-size:13px;
+    font-weight:600;
+    line-height:1.25;
+    word-break:break-word;
+  }
+  .item .meta{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .badge{
+    display:inline-block;
+    font-size:10.5px;
+    font-weight:700;
+    padding:2px 6px;
+    border-radius:20px;
+    margin-top:3px;
+  }
+  .badge.green{background:var(--green-bg);color:var(--green);}
+  .badge.amber{background:var(--amber-bg);color:var(--amber);}
+  .badge.red{background:var(--red-bg);color:var(--red);}
+  .qty-controls{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .qty-controls button{
+    width:26px;height:26px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--navy);
+  }
+  .qty-controls input{
+    width:46px;
+    text-align:center;
+    padding:5px 2px;
+    font-size:13px;
+  }
+  .search-box{
+    width:100%;
+    margin-bottom:2px;
+  }
+
+  /* Sticky cart bar */
+  .cart-bar{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    background:var(--navy);
+    color:#fff;
+    padding:10px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    z-index:30;
+    box-shadow:0 -2px 10px rgba(0,0,0,.2);
+  }
+  .cart-bar .txt{font-size:12.5px;line-height:1.3;}
+  .cart-bar .txt b{font-size:14.5px;}
+  .cart-bar button{
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    padding:9px 14px;
+    border-radius:8px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+
+  /* Summary tab */
+  table.summary{
+    width:100%;
+    border-collapse:collapse;
+    background:var(--card);
+    border-radius:var(--radius);
+    overflow:hidden;
+    border:1px solid var(--line);
+  }
+  table.summary th{
+    background:#F7FAFB;
+    text-align:left;
+    font-size:12px;
+    color:var(--ink-soft);
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  table.summary td{
+    padding:9px 10px;
+    font-size:13px;
+    border-bottom:1px solid #EEF2F4;
+  }
+  table.summary tr:last-child td{border-bottom:none;}
+  .totals-row{
+    display:flex;
+    gap:14px;
+    margin:12px 0;
+    flex-wrap:wrap;
+  }
+  .totals-row .stat{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 14px;
+    min-width:120px;
+  }
+  .totals-row .stat .n{font-size:20px;font-weight:800;color:var(--navy);}
+  .totals-row .stat .l{font-size:11px;color:var(--ink-soft);}
+  .empty-state{
+    text-align:center;
+    padding:40px 16px;
+    color:var(--ink-soft);
+    font-size:13px;
+  }
+  .actions-row{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+    flex-wrap:wrap;
+  }
+  .banner{
+    background:var(--amber-bg);
+    color:#7A5310;
+    border:1px solid #EAD4A2;
+    padding:9px 12px;
+    border-radius:8px;
+    font-size:12.5px;
+    margin-bottom:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+  }
+  .banner button{
+    background:transparent;
+    border:1px solid #C9A45A;
+    color:#7A5310;
+    border-radius:6px;
+    padding:4px 8px;
+    font-size:11.5px;
+    cursor:pointer;
+  }
+  .print-only{display:none;}
+  .business-name-input{
+    max-width:340px;
+    margin-bottom:10px;
+  }
+  @media print{
+    header,.cart-bar,.top-actions,.actions-row,.no-print,.business-name-input,.history-box{display:none !important;}
+    body{padding:0;background:#fff;}
+    .print-only{display:block !important;}
+    .print-header{
+      text-align:center;
+      margin-bottom:22px;
+      border-bottom:3px solid #152A3A;
+      padding-bottom:14px;
+    }
+    .print-header .biz{
+      font-size:22px;
+      font-weight:800;
+      color:#152A3A;
+      margin-bottom:4px;
+    }
+    .print-header .title{
+      font-size:16px;
+      font-weight:700;
+      color:#0E8E86;
+      margin-bottom:6px;
+    }
+    .print-header .date{
+      font-size:12.5px;
+      color:#5B6B78;
+    }
+    .totals-row{margin-bottom:18px;}
+    .totals-row .stat .n{font-size:24px;}
+    table.summary{font-size:16px;}
+    table.summary th{font-size:13.5px;padding:10px;}
+    table.summary td{font-size:16px;padding:12px 10px;}
+    .print-signatures{
+      display:flex;
+      justify-content:space-between;
+      margin-top:60px;
+      gap:30px;
+    }
+    .print-signatures div{
+      flex:1;
+      text-align:center;
+      font-size:12.5px;
+      color:#5B6B78;
+      border-top:1px solid #333;
+      padding-top:6px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔄 Transferencia Almacén → Piso de Venta</h1>
+  <div class="sub">Compara existencias y arma la transferencia en tiempo real</div>
+  <nav class="tabs">
+    <button id="tabBtnCarga" class="active" onclick="showTab('carga')">1. Cargar Excel</button>
+    <button id="tabBtnComparar" onclick="showTab('comparar')" disabled>2. Comparar</button>
+    <button id="tabBtnResumen" onclick="showTab('resumen')" disabled>3. Resumen</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- TAB 1: CARGA -->
+  <section id="tab-carga">
+    <div id="restoreBanner" class="banner hidden">
+      <span>Se encontró una sesión anterior guardada en este teléfono.</span>
+      <div style="display:flex;gap:6px;">
+        <button onclick="restoreSession()">Restaurar</button>
+        <button onclick="dismissRestoreBanner()">Ignorar</button>
+      </div>
+    </div>
+
+    <div class="upload-grid">
+      <div class="card">
+        <h2>🛒 Piso de Venta</h2>
+        <p class="hint">Excel con los productos que están en el área de ventas (solo nombres).</p>
+        <input type="file" id="filePiso" accept=".xlsx,.xls">
+        <div id="statusPiso" class="status"></div>
+        <div id="configPiso" class="config-box hidden"></div>
+      </div>
+
+      <div class="card">
+        <h2>📦 Almacén</h2>
+        <p class="hint">Excel con productos y cantidad disponible en almacén.</p>
+        <input type="file" id="fileAlmacen" accept=".xlsx,.xls">
+        <div id="statusAlmacen" class="status"></div>
+        <div id="configAlmacen" class="config-box hidden"></div>
+      </div>
+    </div>
+
+    <button class="btn block" id="btnProcesar" onclick="procesarYComparar()" disabled>Comparar existencias →</button>
+  </section>
+
+  <!-- TAB 2: COMPARAR -->
+  <section id="tab-comparar" class="hidden">
+    <div id="statsBar" class="stats-bar"></div>
+    <div id="parecidosBox"></div>
+    <div class="top-actions">
+      <input type="text" id="searchGlobal" class="search-box" placeholder="🔎 Buscar producto en ambas listas..." oninput="renderPanels()">
+      <button class="btn secondary" onclick="showTab('carga')">← Cargar otros archivos</button>
+      <button class="btn" onclick="reponerTodo()">⚡ Reponer todo</button>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>🛒 Piso de Venta <span class="count" id="countPiso"></span></h3>
+          <label style="font-size:11.5px;font-weight:600;color:var(--ink-soft);display:flex;align-items:center;gap:5px;">
+            <input type="checkbox" id="filtroBajoStock" onchange="renderPanels()"> Mostrar solo bajo stock
+          </label>
+          <label style="font-size:11.5px;font-weight:600;color:var(--ink-soft);display:flex;align-items:center;gap:5px;margin-top:4px;">
+            <input type="checkbox" id="filtroPisoConDisponible" onchange="renderPanels()"> Solo con existencia disponible en almacén
+          </label>
+          <label style="font-size:11.5px;font-weight:600;color:var(--ink-soft);display:flex;align-items:center;gap:5px;margin-top:4px;">
+            <input type="checkbox" id="ordenUrgencia" onchange="renderPanels()"> Ordenar por urgencia
+          </label>
+        </div>
+        <div class="panel-body" id="listPiso"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>📦 Almacén <span class="count" id="countAlmacen"></span></h3>
+          <label style="font-size:11.5px;font-weight:600;color:var(--ink-soft);display:flex;align-items:center;gap:5px;">
+            <input type="checkbox" id="filtroConStock" onchange="renderPanels()"> Solo con existencia disponible
+          </label>
+        </div>
+        <div class="panel-body" id="listAlmacen"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: RESUMEN -->
+  <section id="tab-resumen" class="hidden">
+    <div class="top-actions">
+      <h2 style="margin:0;font-size:15px;">📋 Resumen de transferencia</h2>
+      <button class="btn secondary" onclick="showTab('comparar')">← Seguir eligiendo</button>
+    </div>
+    <div id="resumenContent"></div>
+  </section>
+
+</main>
+
+<div class="cart-bar" id="cartBar">
+  <div class="txt"><b id="cartCount">0</b> productos · <b id="cartUnits">0</b> unidades listas<br>para transferir</div>
+  <button onclick="showTab('resumen')">Ver resumen →</button>
+</div>
+
+<script>
+/* ===================== ESTADO ===================== */
+let state = {
+  piso: [],       // [{nombre, norm, cantidad|null}]
+  almacen: [],    // [{nombre, norm, cantidad}]
+  cart: {},        // norm -> {nombre, cantidad}
+  rawPiso: null,   // rows preview
+  rawAlmacen: null,
+  pisoThreshold: null,
+  negocio: ''
+};
+const STORAGE_KEY = 'transferenciaAlmacenState_v1';
+
+/* ===================== UTIL ===================== */
+function normaliza(s){
+  return (s||'').toString().trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ');
+}
+function colLettersToIndex(letters){
+  let idx=0;
+  for(let i=0;i<letters.length;i++){ idx = idx*26 + (letters.charCodeAt(i)-64); }
+  return idx-1;
+}
+function saveSession(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      piso: state.piso, almacen: state.almacen, cart: state.cart, pisoThreshold: state.pisoThreshold, negocio: state.negocio, ts: Date.now()
+    }));
+  }catch(e){ console.warn('No se pudo guardar sesión', e); }
+}
+function loadSessionIfAny(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    document.getElementById('restoreBanner').classList.remove('hidden');
+  }catch(e){}
+}
+function restoreSession(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    state.piso = (data.piso || []).map(p=>({...p, cantidad: (p.cantidad===undefined?null:p.cantidad)}));
+    state.almacen = data.almacen || [];
+    state.cart = data.cart || {};
+    state.pisoThreshold = (typeof data.pisoThreshold === 'number') ? data.pisoThreshold : null;
+    state.negocio = data.negocio || '';
+    document.getElementById('restoreBanner').classList.add('hidden');
+    if(state.piso.length || state.almacen.length){
+      enableTab('tabBtnComparar');
+      enableTab('tabBtnResumen');
+      showTab('comparar');
+    }
+  }catch(e){ alert('No se pudo restaurar la sesión anterior.'); }
+}
+function dismissRestoreBanner(){
+  document.getElementById('restoreBanner').classList.add('hidden');
+}
+function borrarTodo(){
+  if(!confirm('¿Borrar todos los datos cargados y la transferencia en curso? Esta acción no se puede deshacer.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = {piso:[],almacen:[],cart:{},rawPiso:null,rawAlmacen:null};
+  location.reload();
+}
+
+/* ===================== PARSER XLSX (sin librerías externas) ===================== */
+async function readZipEntries(buffer){
+  const view = new DataView(buffer);
+  const uint8 = new Uint8Array(buffer);
+  let eocdOffset = -1;
+  const maxCommentLen = 65535;
+  const minPos = Math.max(0, uint8.length - (22+maxCommentLen));
+  for(let i=uint8.length-22;i>=minPos;i--){
+    if(view.getUint32(i,true)===0x06054b50){ eocdOffset=i; break; }
+  }
+  if(eocdOffset===-1) throw new Error('El archivo no parece ser un Excel (.xlsx) válido.');
+  const cdOffset = view.getUint32(eocdOffset+16,true);
+  const totalEntries = view.getUint16(eocdOffset+10,true);
+  const entries = {};
+  let ptr = cdOffset;
+  for(let i=0;i<totalEntries;i++){
+    const sig = view.getUint32(ptr,true);
+    if(sig!==0x02014b50) break;
+    const method = view.getUint16(ptr+10,true);
+    const compSize = view.getUint32(ptr+20,true);
+    const nameLen = view.getUint16(ptr+28,true);
+    const extraLen = view.getUint16(ptr+30,true);
+    const commentLen = view.getUint16(ptr+32,true);
+    const localOffset = view.getUint32(ptr+42,true);
+    const nameBytes = uint8.slice(ptr+46, ptr+46+nameLen);
+    const name = new TextDecoder('utf-8').decode(nameBytes);
+    entries[name] = {method, compSize, localOffset};
+    ptr += 46+nameLen+extraLen+commentLen;
+  }
+  return entries;
+}
+async function extractEntry(buffer, entry){
+  const view = new DataView(buffer);
+  const uint8 = new Uint8Array(buffer);
+  const lo = entry.localOffset;
+  const nameLen = view.getUint16(lo+26,true);
+  const extraLen = view.getUint16(lo+28,true);
+  const dataStart = lo+30+nameLen+extraLen;
+  const compData = uint8.slice(dataStart, dataStart+entry.compSize);
+  if(entry.method===0){ return compData; }
+  if(entry.method===8){
+    if(typeof DecompressionStream === 'undefined'){
+      throw new Error('Este navegador no soporta descompresión ZIP nativa. Actualiza Chrome.');
+    }
+    const ds = new DecompressionStream('deflate-raw');
+    const stream = new Blob([compData]).stream().pipeThrough(ds);
+    const buf = await new Response(stream).arrayBuffer();
+    return new Uint8Array(buf);
+  }
+  throw new Error('Formato de compresión no soportado dentro del Excel.');
+}
+async function parseXLSX(arrayBuffer){
+  const entries = await readZipEntries(arrayBuffer);
+  const decoder = new TextDecoder('utf-8');
+
+  if(!entries['xl/workbook.xml']) throw new Error('No se encontró la hoja de cálculo dentro del archivo.');
+  const wbXml = decoder.decode(await extractEntry(arrayBuffer, entries['xl/workbook.xml']));
+  const wbDoc = new DOMParser().parseFromString(wbXml,'application/xml');
+  const firstSheet = wbDoc.getElementsByTagName('sheet')[0];
+  if(!firstSheet) throw new Error('El Excel no tiene hojas.');
+  const rId = firstSheet.getAttribute('r:id') || firstSheet.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
+
+  let sheetPath = 'xl/worksheets/sheet1.xml';
+  if(entries['xl/_rels/workbook.xml.rels']){
+    const relsXml = decoder.decode(await extractEntry(arrayBuffer, entries['xl/_rels/workbook.xml.rels']));
+    const relsDoc = new DOMParser().parseFromString(relsXml,'application/xml');
+    const rel = Array.from(relsDoc.getElementsByTagName('Relationship')).find(r=>r.getAttribute('Id')===rId);
+    if(rel){
+      let target = rel.getAttribute('Target');
+      if(target.startsWith('/')) target = target.slice(1);
+      sheetPath = target.startsWith('xl/') ? target : 'xl/'+target;
+    }
+  }
+  if(!entries[sheetPath]){
+    const anySheet = Object.keys(entries).find(n=>/xl\/worksheets\/sheet\d+\.xml/.test(n));
+    if(anySheet) sheetPath = anySheet;
+    else throw new Error('No se pudo localizar la hoja de datos dentro del Excel.');
+  }
+
+  let sharedStrings = [];
+  if(entries['xl/sharedStrings.xml']){
+    const ssXml = decoder.decode(await extractEntry(arrayBuffer, entries['xl/sharedStrings.xml']));
+    const ssDoc = new DOMParser().parseFromString(ssXml,'application/xml');
+    sharedStrings = Array.from(ssDoc.getElementsByTagName('si')).map(si=>{
+      return Array.from(si.getElementsByTagName('t')).map(t=>t.textContent).join('');
+    });
+  }
+
+  const sheetXml = decoder.decode(await extractEntry(arrayBuffer, entries[sheetPath]));
+  const sheetDoc = new DOMParser().parseFromString(sheetXml,'application/xml');
+  const rowEls = Array.from(sheetDoc.getElementsByTagName('row'));
+  const rows = [];
+  rowEls.forEach(rowEl=>{
+    const rAttr = rowEl.getAttribute('r');
+    const rowNum = rAttr ? parseInt(rAttr,10)-1 : rows.length;
+    const cells = Array.from(rowEl.getElementsByTagName('c'));
+    const rowArr = [];
+    let autoCol = 0;
+    cells.forEach(c=>{
+      const ref = c.getAttribute('r');
+      let colIdx;
+      if(ref){
+        const m = ref.match(/[A-Z]+/);
+        colIdx = m ? colLettersToIndex(m[0]) : autoCol;
+      } else {
+        colIdx = autoCol;
+      }
+      autoCol = colIdx+1;
+      const type = c.getAttribute('t');
+      let value = '';
+      if(type==='inlineStr'){
+        const isEl = c.getElementsByTagName('is')[0];
+        value = isEl ? isEl.textContent : '';
+      } else {
+        const vEl = c.getElementsByTagName('v')[0];
+        const raw = vEl ? vEl.textContent : '';
+        value = (type==='s') ? (sharedStrings[parseInt(raw,10)] || '') : raw;
+      }
+      rowArr[colIdx] = value;
+    });
+    rows[rowNum] = rowArr;
+  });
+  const result = [];
+  for(let i=0;i<rows.length;i++){ result.push(rows[i]||[]); }
+  return result.filter(r=>r.length>0 && r.some(c=>String(c||'').trim()!==''));
+}
+
+/* ===================== CARGA DE ARCHIVOS ===================== */
+document.getElementById('filePiso').addEventListener('change', e=>handleFile(e,'piso'));
+document.getElementById('fileAlmacen').addEventListener('change', e=>handleFile(e,'almacen'));
+
+async function handleFile(e, tipo){
+  const file = e.target.files[0];
+  const statusEl = document.getElementById(tipo==='piso'?'statusPiso':'statusAlmacen');
+  const configEl = document.getElementById(tipo==='piso'?'configPiso':'configAlmacen');
+  if(!file) return;
+  statusEl.textContent = 'Leyendo archivo...';
+  statusEl.className = 'status';
+  try{
+    const buffer = await file.arrayBuffer();
+    const rows = await parseXLSX(buffer);
+    if(!rows.length) throw new Error('El archivo está vacío o no se pudieron leer filas.');
+    if(tipo==='piso') state.rawPiso = rows; else state.rawAlmacen = rows;
+    statusEl.textContent = `✔ ${rows.length} filas leídas`;
+    statusEl.className = 'status ok';
+    renderConfigBox(tipo, rows, configEl);
+    configEl.classList.remove('hidden');
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = '✖ ' + err.message;
+    statusEl.className = 'status err';
+    configEl.classList.add('hidden');
+  }
+  checkReadyToProcess();
+}
+
+function renderConfigBox(tipo, rows, container){
+  const maxCols = Math.max(...rows.slice(0,10).map(r=>r.length), 1);
+  const colOptions = (selectedIdx, includeNone)=>{
+    let opts = '';
+    if(includeNone){
+      opts += `<option value="-1" ${selectedIdx===-1?'selected':''}>— No tengo esta columna —</option>`;
+    }
+    for(let i=0;i<maxCols;i++){
+      const letra = String.fromCharCode(65+i);
+      const headerGuess = rows[0] && rows[0][i] ? String(rows[0][i]).slice(0,24) : '(vacío)';
+      opts += `<option value="${i}" ${i===selectedIdx?'selected':''}>Columna ${letra} — ${escapeHtml(headerGuess)}</option>`;
+    }
+    return opts;
+  };
+  // 1) preferencia guardada de meses anteriores; 2) si no hay o ya no es válida, se adivina por palabras clave
+  const prefs = loadColumnPrefs();
+  const saved = prefs[tipo];
+  const header = (rows[0]||[]).map(c=>normaliza(c));
+  const guessNombre = header.findIndex(h=>/produc|nombre|articul|descripcion/.test(h));
+  const guessCantidad = header.findIndex(h=>/cantidad|existenc|stock|disponib/.test(h));
+
+  let nombreIdx, cantidadIdx, hasHeaderGuess, usandoGuardada=false;
+  if(saved && typeof saved.colNombre==='number' && saved.colNombre<maxCols){
+    nombreIdx = saved.colNombre;
+    cantidadIdx = (typeof saved.colCantidad==='number' && saved.colCantidad<maxCols) ? saved.colCantidad : -1;
+    hasHeaderGuess = !!saved.header;
+    usandoGuardada = true;
+  } else {
+    nombreIdx = guessNombre>=0 ? guessNombre : 0;
+    cantidadIdx = guessCantidad>=0 ? guessCantidad : (tipo==='almacen' ? (maxCols>1?1:0) : -1);
+    hasHeaderGuess = guessNombre>=0 || guessCantidad>=0;
+  }
+
+  let html = '';
+  if(usandoGuardada){
+    html += `<div class="col-hint">✔ Se usaron las mismas columnas que la última vez. Puedes cambiarlas si este archivo es distinto.</div>`;
+  }
+  html += `<label><input type="checkbox" id="hdr_${tipo}" ${hasHeaderGuess?'checked':''} onchange="refreshPreview('${tipo}')"> La primera fila es encabezado</label>`;
+  html += `<label>Columna de nombre del producto</label>`;
+  html += `<select id="colNombre_${tipo}" onchange="refreshPreview('${tipo}')">${colOptions(nombreIdx, false)}</select>`;
+
+  if(tipo==='almacen'){
+    html += `<label>Columna de cantidad disponible</label>`;
+    html += `<select id="colCantidad_${tipo}" onchange="refreshPreview('${tipo}')">${colOptions(cantidadIdx, false)}</select>`;
+  } else {
+    html += `<label>Columna de cantidad actual en piso (opcional)</label>`;
+    html += `<select id="colCantidad_${tipo}" onchange="refreshPreview('${tipo}')">${colOptions(cantidadIdx, true)}</select>`;
+    html += `<label>Stock mínimo deseado en piso (opcional)</label>`;
+    const umbralGuardado = (saved && typeof saved.umbral==='number') ? saved.umbral : state.pisoThreshold;
+    html += `<input type="number" min="0" id="umbral_piso" placeholder="Ej: 5" value="${umbralGuardado ?? ''}" oninput="refreshPreview('piso')">`;
+    html += `<div class="col-hint">Si lo defines, marcaremos en rojo los productos del piso con menos de esa cantidad. También se recuerda para el próximo mes.</div>`;
+  }
+  html += `<div id="preview_${tipo}"></div>`;
+  container.innerHTML = html;
+  refreshPreview(tipo);
+}
+
+function refreshPreview(tipo){
+  const rows = tipo==='piso' ? state.rawPiso : state.rawAlmacen;
+  if(!rows) return;
+  const hasHeader = document.getElementById(`hdr_${tipo}`).checked;
+  const startRow = hasHeader ? 1 : 0;
+  const previewRows = rows.slice(startRow, startRow+6);
+  const maxCols = Math.max(...rows.slice(0,10).map(r=>r.length), 1);
+  const nombreIdx = parseInt(document.getElementById(`colNombre_${tipo}`).value,10);
+  const cantidadSel = document.getElementById(`colCantidad_${tipo}`);
+  const cantidadIdx = cantidadSel ? parseInt(cantidadSel.value,10) : -1;
+
+  let html = '<div class="preview-wrap"><table class="preview-table"><thead><tr>';
+  for(let i=0;i<maxCols;i++){
+    const letra = String.fromCharCode(65+i);
+    let cls = '';
+    if(i===nombreIdx) cls='selected-name';
+    else if(i===cantidadIdx) cls='selected-qty';
+    html += `<th class="${cls}">${letra}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+  previewRows.forEach(r=>{
+    html += '<tr>';
+    for(let i=0;i<maxCols;i++){
+      let cls = '';
+      if(i===nombreIdx) cls='selected-name';
+      else if(i===cantidadIdx) cls='selected-qty';
+      html += `<td class="${cls}">${escapeHtml(String(r[i]||''))}</td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += `<div class="col-hint">🟢 verde = columna de nombre &nbsp; 🟠 naranja = columna de cantidad</div>`;
+  document.getElementById(`preview_${tipo}`).innerHTML = html;
+
+  let umbralActual = null;
+  if(tipo==='piso'){
+    const umbralEl = document.getElementById('umbral_piso');
+    if(umbralEl){
+      const v = parseInt(umbralEl.value,10);
+      umbralActual = isNaN(v) ? null : v;
+      state.pisoThreshold = umbralActual;
+    }
+  }
+
+  // recordar columnas elegidas para la próxima vez que se cargue un archivo de este tipo
+  const prefs = loadColumnPrefs();
+  prefs[tipo] = { header: hasHeader, colNombre: nombreIdx, colCantidad: cantidadIdx };
+  if(tipo==='piso') prefs.piso.umbral = umbralActual;
+  saveColumnPrefs(prefs);
+
+  checkReadyToProcess();
+}
+
+const COLUMN_PREFS_KEY = 'transferenciaColumnPrefs_v1';
+function loadColumnPrefs(){
+  try{ return JSON.parse(localStorage.getItem(COLUMN_PREFS_KEY)) || {}; }
+  catch(e){ return {}; }
+}
+function saveColumnPrefs(prefs){
+  try{ localStorage.setItem(COLUMN_PREFS_KEY, JSON.stringify(prefs)); }
+  catch(e){ console.warn('No se pudieron guardar las columnas', e); }
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function checkReadyToProcess(){
+  const ready = !!state.rawPiso && !!state.rawAlmacen;
+  document.getElementById('btnProcesar').disabled = !ready;
+}
+
+/* ===================== PROCESAR Y COMPARAR ===================== */
+function procesarYComparar(){
+  try{
+    // Piso de venta
+    const hdrPiso = document.getElementById('hdr_piso').checked;
+    const colNombrePiso = parseInt(document.getElementById('colNombre_piso').value,10);
+    const colCantidadPiso = parseInt(document.getElementById('colCantidad_piso').value,10); // -1 si no aplica
+    const umbralEl = document.getElementById('umbral_piso');
+    const umbralVal = umbralEl ? parseInt(umbralEl.value,10) : NaN;
+    state.pisoThreshold = isNaN(umbralVal) ? null : umbralVal;
+    const startPiso = hdrPiso?1:0;
+    const piso = [];
+    state.rawPiso.slice(startPiso).forEach(r=>{
+      const nombre = String(r[colNombrePiso]||'').trim();
+      if(!nombre) return;
+      let cantidad = null;
+      if(colCantidadPiso>=0){
+        const parsed = parseFloat(String(r[colCantidadPiso]||'0').replace(',','.'));
+        cantidad = isNaN(parsed) ? 0 : parsed;
+      }
+      piso.push({nombre, norm: normaliza(nombre), cantidad});
+    });
+
+    // Almacén
+    const hdrAlm = document.getElementById('hdr_almacen').checked;
+    const colNombreAlm = parseInt(document.getElementById('colNombre_almacen').value,10);
+    const colCantidadAlm = parseInt(document.getElementById('colCantidad_almacen').value,10);
+    const startAlm = hdrAlm?1:0;
+    const almacenMap = {};
+    state.rawAlmacen.slice(startAlm).forEach(r=>{
+      const nombre = String(r[colNombreAlm]||'').trim();
+      if(!nombre) return;
+      let cantidad = parseFloat(String(r[colCantidadAlm]||'0').replace(',','.'));
+      if(isNaN(cantidad)) cantidad = 0;
+      const norm = normaliza(nombre);
+      if(almacenMap[norm]){
+        almacenMap[norm].cantidad += cantidad; // merge duplicados
+      } else {
+        almacenMap[norm] = {nombre, norm, cantidad};
+      }
+    });
+
+    if(!piso.length) throw new Error('No se detectaron productos en el archivo de Piso de Venta. Revisa la columna seleccionada.');
+    if(!Object.keys(almacenMap).length) throw new Error('No se detectaron productos en el archivo de Almacén. Revisa las columnas seleccionadas.');
+
+    state.piso = piso;
+    state.almacen = Object.values(almacenMap).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+    state.cart = {};
+
+    saveSession();
+    enableTab('tabBtnComparar');
+    enableTab('tabBtnResumen');
+    showTab('comparar');
+    renderPanels();
+  }catch(err){
+    alert(err.message);
+  }
+}
+
+function enableTab(id){ document.getElementById(id).disabled = false; }
+
+/* ===================== TABS ===================== */
+function showTab(name){
+  ['carga','comparar','resumen'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
+  });
+  document.getElementById('tabBtnCarga').classList.toggle('active', name==='carga');
+  document.getElementById('tabBtnComparar').classList.toggle('active', name==='comparar');
+  document.getElementById('tabBtnResumen').classList.toggle('active', name==='resumen');
+  document.getElementById('cartBar').style.display = (name==='resumen') ? 'none' : 'flex';
+  if(name==='comparar') renderPanels();
+  if(name==='resumen') renderResumen();
+}
+
+/* ===================== RENDER PANELES ===================== */
+function cartQty(norm){
+  return state.cart[norm] ? state.cart[norm].cantidad : 0;
+}
+function disponibleReal(prod){
+  return Math.max(0, prod.cantidad - cartQty(prod.norm));
+}
+function renderPanels(){
+  const q = normaliza(document.getElementById('searchGlobal').value);
+  const almacenPorNorm = {};
+  state.almacen.forEach(a=>almacenPorNorm[a.norm]=a);
+  const th = state.pisoThreshold;
+  const filtroBajoStock = document.getElementById('filtroBajoStock') && document.getElementById('filtroBajoStock').checked;
+  const filtroPisoConDisponible = document.getElementById('filtroPisoConDisponible') && document.getElementById('filtroPisoConDisponible').checked;
+  const filtroConStock = document.getElementById('filtroConStock') && document.getElementById('filtroConStock').checked;
+  const ordenUrgencia = document.getElementById('ordenUrgencia') && document.getElementById('ordenUrgencia').checked;
+
+  // PISO
+  const listPiso = document.getElementById('listPiso');
+  let pisoFiltrado = state.piso.filter(p=>!q || p.norm.includes(q));
+  if(filtroBajoStock && th!==null){
+    pisoFiltrado = pisoFiltrado.filter(p=> p.cantidad!==null && p.cantidad<th);
+  }
+  if(filtroPisoConDisponible){
+    pisoFiltrado = pisoFiltrado.filter(p=>{
+      const enAlmacen = almacenPorNorm[p.norm];
+      return enAlmacen && disponibleReal(enAlmacen)>0;
+    });
+  }
+  if(ordenUrgencia && th!==null){
+    pisoFiltrado = pisoFiltrado.slice().sort((a,b)=>{
+      const urgA = (a.cantidad===null) ? -Infinity : (th - a.cantidad);
+      const urgB = (b.cantidad===null) ? -Infinity : (th - b.cantidad);
+      return urgB - urgA;
+    });
+  }
+  document.getElementById('countPiso').textContent = `(${pisoFiltrado.length}/${state.piso.length})`;
+  if(!pisoFiltrado.length){
+    listPiso.innerHTML = '<div class="empty-state">Sin resultados.</div>';
+  } else {
+    listPiso.innerHTML = pisoFiltrado.map(p=>{
+      const enAlmacen = almacenPorNorm[p.norm];
+      const transf = cartQty(p.norm);
+      let badges = '';
+      if(p.cantidad!==null){
+        if(th!==null && p.cantidad<th){
+          const urgencia = th - p.cantidad;
+          badges += `<span class="badge red">Bajo stock: ${p.cantidad} (faltan ${urgencia})</span>`;
+        } else {
+          badges += `<span class="badge green">En piso: ${p.cantidad}</span>`;
+        }
+      }
+      if(!enAlmacen){
+        badges += '<span class="badge red">Sin stock en almacén</span>';
+      } else if(transf>0){
+        badges += `<span class="badge green">+${transf} en camino</span>`;
+      } else if(enAlmacen.cantidad>0){
+        badges += `<span class="badge amber">${enAlmacen.cantidad} disp. en almacén</span>`;
+      } else {
+        badges += '<span class="badge red">Almacén en 0</span>';
+      }
+      return `<div class="item"><div><div class="name">${escapeHtml(p.nombre)}</div><div class="meta">${badges}</div></div></div>`;
+    }).join('');
+  }
+
+  // ALMACEN
+  const listAlmacen = document.getElementById('listAlmacen');
+  const pisoPorNorm = {};
+  state.piso.forEach(p=>pisoPorNorm[p.norm]=p);
+  let almFiltrado = state.almacen.filter(a=>!q || a.norm.includes(q));
+  if(filtroConStock){
+    almFiltrado = almFiltrado.filter(a=>disponibleReal(a)>0);
+  }
+  document.getElementById('countAlmacen').textContent = `(${almFiltrado.length}/${state.almacen.length})`;
+  if(!almFiltrado.length){
+    listAlmacen.innerHTML = '<div class="empty-state">Sin resultados.</div>';
+  } else {
+    listAlmacen.innerHTML = almFiltrado.map(a=>{
+      const disp = disponibleReal(a);
+      const pisoProd = pisoPorNorm[a.norm];
+      const transf = cartQty(a.norm);
+      const badge = pisoProd ? '<span class="badge green">Ya en piso</span>' : '<span class="badge amber">Nuevo en piso</span>';
+      let sugerirBtn = '';
+      if(pisoProd && pisoProd.cantidad!==null && th!==null){
+        const sugerido = Math.max(0, Math.min(a.cantidad, th - pisoProd.cantidad));
+        if(sugerido>0){
+          sugerirBtn = `<button class="btn secondary" style="padding:3px 8px;font-size:10.5px;margin-top:4px;" onclick="setTransfer('${a.norm}', ${sugerido})">Sugerir ${sugerido}</button>`;
+        }
+      }
+      return `
+      <div class="item">
+        <div>
+          <div class="name">${escapeHtml(a.nombre)}</div>
+          <div class="meta">Disponible: <b>${disp}</b> / ${a.cantidad}&nbsp; ${badge}${pisoProd && pisoProd.cantidad!==null ? ` · en piso: ${pisoProd.cantidad}`:''}</div>
+          ${sugerirBtn}
+        </div>
+        <div class="qty-controls">
+          <button onclick="ajustarTransfer('${a.norm}',-1)">−</button>
+          <input type="number" min="0" max="${a.cantidad}" value="${transf}" id="qty_${a.norm}"
+            onchange="setTransfer('${a.norm}', this.value)">
+          <button onclick="ajustarTransfer('${a.norm}',1)">+</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  actualizarCartBar();
+  renderStats();
+  renderParecidos();
+}
+
+/* ===================== PANEL DE ALERTAS ===================== */
+function renderStats(){
+  const box = document.getElementById('statsBar');
+  if(!box) return;
+  const th = state.pisoThreshold;
+  const totalPiso = state.piso.length;
+  const bajoStock = (th!==null) ? state.piso.filter(p=>p.cantidad!==null && p.cantidad<th).length : null;
+  const unidadesAReponer = (th!==null) ? state.piso.reduce((s,p)=>{
+    if(p.cantidad===null || p.cantidad>=th) return s;
+    return s + (th - p.cantidad);
+  },0) : null;
+  const totalDisponibleAlmacen = state.almacen.reduce((s,a)=>s+disponibleReal(a),0);
+
+  let html = '';
+  html += `<div class="stat-card"><div class="n">${totalPiso}</div><div class="l">productos en piso</div></div>`;
+  if(th!==null){
+    html += `<div class="stat-card ${bajoStock>0?'warn':'ok'}"><div class="n">${bajoStock}</div><div class="l">bajo el mínimo (${th})</div></div>`;
+    html += `<div class="stat-card ${unidadesAReponer>0?'warn':'ok'}"><div class="n">${unidadesAReponer}</div><div class="l">unidades a reponer</div></div>`;
+  } else {
+    html += `<div class="stat-card"><div class="n">—</div><div class="l">define un mínimo para ver alertas</div></div>`;
+  }
+  html += `<div class="stat-card ok"><div class="n">${totalDisponibleAlmacen}</div><div class="l">unidades libres en almacén</div></div>`;
+  box.innerHTML = html;
+}
+
+/* ===================== REPONER TODO ===================== */
+function reponerTodo(){
+  const th = state.pisoThreshold;
+  if(th===null){
+    alert('Primero define un "Stock mínimo deseado en piso" al cargar el archivo de Piso de Venta (pestaña 1).');
+    return;
+  }
+  const pisoPorNorm = {};
+  state.piso.forEach(p=>pisoPorNorm[p.norm]=p);
+  const cambios = [];
+  state.almacen.forEach(a=>{
+    const pisoProd = pisoPorNorm[a.norm];
+    if(!pisoProd || pisoProd.cantidad===null) return;
+    if(pisoProd.cantidad>=th) return;
+    const sugerido = Math.max(0, Math.min(a.cantidad, th - pisoProd.cantidad));
+    if(sugerido>0 && sugerido!==cartQty(a.norm)){
+      cambios.push({norm:a.norm, nombre:a.nombre, cantidad:sugerido});
+    }
+  });
+  if(!cambios.length){
+    alert('No hay productos bajo el mínimo con existencia disponible en almacén para reponer.');
+    return;
+  }
+  const totalUnidades = cambios.reduce((s,c)=>s+c.cantidad,0);
+  if(!confirm(`Se completará automáticamente la transferencia sugerida para ${cambios.length} productos (${totalUnidades} unidades en total). ¿Continuar?`)) return;
+  cambios.forEach(c=>{ state.cart[c.norm] = {nombre:c.nombre, cantidad:c.cantidad}; });
+  saveSession();
+  renderPanels();
+}
+
+/* ===================== AVISO DE NOMBRES PARECIDOS ===================== */
+function levenshtein(a,b){
+  const m=a.length, n=b.length;
+  if(m===0) return n;
+  if(n===0) return m;
+  const dp = new Array(n+1);
+  for(let j=0;j<=n;j++) dp[j]=j;
+  for(let i=1;i<=m;i++){
+    let prev = dp[0];
+    dp[0]=i;
+    for(let j=1;j<=n;j++){
+      const tmp = dp[j];
+      dp[j] = a[i-1]===b[j-1] ? prev : 1+Math.min(prev,dp[j],dp[j-1]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+function detectarNombresParecidos(){
+  if(state.piso.length>400 || state.almacen.length>400) return []; // evita lentitud en catálogos muy grandes
+  const pisoNorms = new Set(state.piso.map(p=>p.norm));
+  const almNorms = new Set(state.almacen.map(a=>a.norm));
+  const pares = [];
+  state.piso.forEach(p=>{
+    if(almNorms.has(p.norm)) return; // ya coincide exacto
+    if(p.norm.length<4) return;
+    let mejor = null, mejorDist = Infinity;
+    state.almacen.forEach(a=>{
+      if(pisoNorms.has(a.norm) && a.norm!==p.norm) return; // el de almacén ya tiene su propio match exacto en piso, no lo sugerimos como confusión
+      const d = levenshtein(p.norm, a.norm);
+      if(d<mejorDist){ mejorDist=d; mejor=a; }
+    });
+    if(mejor && mejorDist>0 && mejorDist<=2 && mejor.norm.length>=4){
+      pares.push({piso:p.nombre, almacen:mejor.nombre, dist:mejorDist});
+    }
+  });
+  return pares;
+}
+function renderParecidos(){
+  const box = document.getElementById('parecidosBox');
+  if(!box) return;
+  const pares = detectarNombresParecidos();
+  if(!pares.length){ box.innerHTML=''; return; }
+  let html = `<details class="parecidos-banner"><summary>⚠️ ${pares.length} posible(s) error(es) de nombre entre archivos</summary>`;
+  pares.forEach(p=>{
+    html += `<div class="pair">Piso: <b>${escapeHtml(p.piso)}</b> &nbsp;≈&nbsp; Almacén: <b>${escapeHtml(p.almacen)}</b></div>`;
+  });
+  html += `<div class="pair" style="border-top:none;font-style:italic;">Revisa si son el mismo producto escrito distinto (esto evita que el sistema los trate como productos separados).</div>`;
+  html += `</details>`;
+  box.innerHTML = html;
+}
+
+function ajustarTransfer(norm, delta){
+  const prod = state.almacen.find(a=>a.norm===norm);
+  if(!prod) return;
+  const actual = cartQty(norm);
+  let nuevo = actual + delta;
+  nuevo = Math.max(0, Math.min(prod.cantidad, nuevo));
+  aplicarTransfer(prod, nuevo);
+}
+function setTransfer(norm, value){
+  const prod = state.almacen.find(a=>a.norm===norm);
+  if(!prod) return;
+  let nuevo = parseInt(value,10);
+  if(isNaN(nuevo) || nuevo<0) nuevo=0;
+  if(nuevo>prod.cantidad) nuevo=prod.cantidad;
+  aplicarTransfer(prod, nuevo);
+}
+function aplicarTransfer(prod, cantidad){
+  if(cantidad<=0){
+    delete state.cart[prod.norm];
+  } else {
+    state.cart[prod.norm] = {nombre: prod.nombre, cantidad};
+  }
+  saveSession();
+  renderPanels();
+}
+
+function actualizarCartBar(){
+  const items = Object.values(state.cart);
+  const totalUnidades = items.reduce((s,i)=>s+i.cantidad,0);
+  document.getElementById('cartCount').textContent = items.length;
+  document.getElementById('cartUnits').textContent = totalUnidades;
+  const bar = document.getElementById('cartBar');
+  bar.style.display = items.length ? 'flex' : 'none';
+}
+
+/* ===================== RESUMEN ===================== */
+function renderResumen(){
+  const items = Object.values(state.cart).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const cont = document.getElementById('resumenContent');
+  const historialHtml = renderHistorialBox();
+  if(!items.length){
+    cont.innerHTML = '<div class="empty-state">Todavía no has seleccionado productos para transferir.<br>Ve a la pestaña "Comparar" y ajusta cantidades.</div>' + historialHtml;
+    return;
+  }
+  const totalUnidades = items.reduce((s,i)=>s+i.cantidad,0);
+  const ahora = new Date();
+  const fechaTexto = ahora.toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' · ' + ahora.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+
+  let html = `
+    <input type="text" id="negocioInput" class="business-name-input" placeholder="Nombre de tu negocio (aparece en la impresión)"
+      value="${escapeHtml(state.negocio||'')}" oninput="guardarNegocio(this.value)">
+
+    <div class="print-only print-header">
+      <div class="biz">${escapeHtml(state.negocio || 'Orden de Transferencia')}</div>
+      <div class="title">📦 Almacén → 🛒 Piso de Venta</div>
+      <div class="date">${fechaTexto}</div>
+    </div>
+
+    <div class="totals-row">
+      <div class="stat"><div class="n">${items.length}</div><div class="l">productos</div></div>
+      <div class="stat"><div class="n">${totalUnidades}</div><div class="l">unidades totales</div></div>
+    </div>
+    <table class="summary">
+      <thead><tr><th>Producto</th><th>Cantidad a transferir</th><th class="no-print"></th></tr></thead>
+      <tbody>
+      ${items.map(i=>{
+        const almProd = state.almacen.find(a=>a.norm===normaliza(i.nombre)) || state.almacen.find(a=>a.nombre===i.nombre);
+        const key = almProd ? almProd.norm : normaliza(i.nombre);
+        return `<tr>
+          <td>${escapeHtml(i.nombre)}</td>
+          <td><b>${i.cantidad}</b></td>
+          <td class="no-print"><button class="btn ghost" onclick="quitarDeCarrito('${key}')">Quitar</button></td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+
+    <div class="print-only print-signatures">
+      <div>Entrega (Almacén)</div>
+      <div>Recibe (Piso de Venta)</div>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn secondary" onclick="exportarCSV()">⬇ Exportar CSV</button>
+      <button class="btn secondary" onclick="window.print()">🖨 Imprimir</button>
+      <button class="btn" onclick="guardarEnHistorial()">✅ Finalizar y guardar en historial</button>
+      <button class="btn ghost" style="border-color:var(--red);" onclick="vaciarCarrito()">Vaciar transferencia</button>
+      <button class="btn ghost" style="border-color:var(--ink-soft);color:var(--ink-soft);" onclick="borrarTodo()">Borrar todo y empezar de cero</button>
+    </div>
+  ` + historialHtml;
+  cont.innerHTML = html;
+}
+function guardarNegocio(v){
+  state.negocio = v;
+  saveSession();
+}
+function quitarDeCarrito(norm){
+  delete state.cart[norm];
+  saveSession();
+  renderResumen();
+}
+function vaciarCarrito(){
+  if(!confirm('¿Vaciar la lista de transferencia actual?')) return;
+  state.cart = {};
+  saveSession();
+  renderResumen();
+}
+function exportarCSV(items){
+  const list = items || Object.values(state.cart).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(!list.length) return;
+  let csv = 'Producto,Cantidad a transferir\n';
+  list.forEach(i=>{
+    const nombre = '"'+i.nombre.replace(/"/g,'""')+'"';
+    csv += `${nombre},${i.cantidad}\n`;
+  });
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fecha = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `transferencia_${fecha}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ===================== HISTORIAL DE TRANSFERENCIAS ===================== */
+const HISTORIAL_KEY = 'transferenciaHistorial_v1';
+function loadHistorial(){
+  try{ return JSON.parse(localStorage.getItem(HISTORIAL_KEY)) || []; }
+  catch(e){ return []; }
+}
+function saveHistorial(list){
+  try{ localStorage.setItem(HISTORIAL_KEY, JSON.stringify(list)); }
+  catch(e){ console.warn('No se pudo guardar el historial', e); }
+}
+function guardarEnHistorial(){
+  const items = Object.values(state.cart).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(!items.length){ alert('No hay productos en la transferencia actual.'); return; }
+  if(!confirm('Esto guardará la transferencia actual en el historial y vaciará la lista. ¿Continuar?')) return;
+  const historial = loadHistorial();
+  historial.unshift({
+    fecha: new Date().toISOString(),
+    negocio: state.negocio || '',
+    items: items,
+    totalUnidades: items.reduce((s,i)=>s+i.cantidad,0)
+  });
+  saveHistorial(historial.slice(0,50)); // conserva las últimas 50
+  state.cart = {};
+  saveSession();
+  renderResumen();
+}
+function eliminarHistorial(idx){
+  if(!confirm('¿Eliminar esta transferencia del historial?')) return;
+  const historial = loadHistorial();
+  historial.splice(idx,1);
+  saveHistorial(historial);
+  renderResumen();
+}
+function exportarHistorialCSV(idx){
+  const historial = loadHistorial();
+  const entry = historial[idx];
+  if(!entry) return;
+  exportarCSV(entry.items);
+}
+function renderHistorialBox(){
+  const historial = loadHistorial();
+  if(!historial.length) return '';
+  let html = `<div class="history-box card" style="margin-top:18px;">
+    <h2 style="margin-bottom:8px;">📜 Historial de transferencias</h2>`;
+  historial.forEach((h,idx)=>{
+    const f = new Date(h.fecha);
+    const fechaTexto = f.toLocaleDateString('es-ES') + ' ' + f.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    html += `<div class="item">
+      <div>
+        <div class="name">${fechaTexto}</div>
+        <div class="meta">${h.items.length} productos · ${h.totalUnidades} unidades${h.negocio?(' · '+escapeHtml(h.negocio)):''}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn secondary" style="padding:6px 9px;font-size:11.5px;" onclick="exportarHistorialCSV(${idx})">CSV</button>
+        <button class="btn ghost" style="padding:6px 9px;font-size:11.5px;" onclick="eliminarHistorial(${idx})">Eliminar</button>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+/* ===================== INIT ===================== */
+document.getElementById('cartBar').style.display = 'none';
+loadSessionIfAny();
+</script>
+</body>
+</html>
